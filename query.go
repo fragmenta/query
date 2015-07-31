@@ -4,16 +4,14 @@
 
 // var pages []*Page
 // err := q.Fetch(&pages)
-// OR 
+// OR
 // pages, err := PagesResults(q)
 // I think I prefer fetch & because then it is clear what type you have
 // if so then FetchFirst() instead of FirstResult?
 // We should pick one of these options and go with it...
 
-
 // NB in order to allow cross-compilation, we exlude sqlite drivers by default
 // uncomment them to allow use of sqlite
-
 
 package query
 
@@ -84,7 +82,6 @@ func Exec(sql string, args ...interface{}) (sql.Result, error) {
 	return results, err
 }
 
-
 // Execute the given sql and args against the database directly
 // Returning sql.Rows
 func Rows(sql string, args ...interface{}) (*sql.Rows, error) {
@@ -92,10 +89,9 @@ func Rows(sql string, args ...interface{}) (*sql.Rows, error) {
 	return results, err
 }
 
-
 // These should instead be something like query.New("table_name").Join(a,b).Insert() and just have one multiple function?
 func (q *Query) InsertJoin(a int64, b int64) error {
-	return q.InsertJoins([]int64{a},[]int64{b})
+	return q.InsertJoins([]int64{a}, []int64{b})
 }
 
 // Insert joins using an array of ids (more general version of above)
@@ -104,74 +100,66 @@ func (q *Query) InsertJoins(a []int64, b []int64) error {
 
 	// Make sure we have some data
 	if len(a) == 0 || len(b) == 0 {
-		return errors.New(fmt.Sprintf("Null data for joins insert %s", q.table()))
+		return fmt.Errorf("Null data for joins insert %s", q.table())
 	}
 
-    // Check for null entries in start of data - this is not a good idea. 
-//	if a[0] == 0 || b[0]  == 0 {
-//		return errors.New(fmt.Sprintf("Zero data for joins insert %s", q.table()))
-//	}
+	// Check for null entries in start of data - this is not a good idea.
+	//	if a[0] == 0 || b[0]  == 0 {
+	//		return fmt.Errorf("Zero data for joins insert %s", q.table())
+	//	}
 
-    
 	values := ""
 	for _, av := range a {
-        for _, bv := range b {
-            // NB no zero values allowed, we simply ignore zero values
-            if av != 0 && bv != 0 {
-                values += fmt.Sprintf("(%d,%d),", av, bv) 
-            }
-           
-        }
+		for _, bv := range b {
+			// NB no zero values allowed, we simply ignore zero values
+			if av != 0 && bv != 0 {
+				values += fmt.Sprintf("(%d,%d),", av, bv)
+			}
+
+		}
 	}
-            
 
 	values = strings.TrimRight(values, ",")
 
 	sql := fmt.Sprintf("INSERT into %s VALUES %s;", q.table(), values)
 
-
 	if Debug {
 		fmt.Printf("JOINS SQL:%s\n", sql)
 	}
-    
 
 	_, err := database.Exec(sql)
 	return err
 }
 
-
 // Update the given joins, using the given id to clear joins first
 func (q *Query) UpdateJoins(id int64, a []int64, b []int64) error {
-    
+
 	if Debug {
-		fmt.Printf("SetJoins %s %s=%d: %v %v \n",q.table(),q.pk(), id,a,b)
+		fmt.Printf("SetJoins %s %s=%d: %v %v \n", q.table(), q.pk(), id, a, b)
 	}
-    
+
 	// First delete any existing joins
- 	err := q.Where(fmt.Sprintf("%s=?",q.pk()), id).Delete()
+	err := q.Where(fmt.Sprintf("%s=?", q.pk()), id).Delete()
 	if err != nil {
 		return err
 	}
-    
-    // Now join all a's with all b's by generating joins for each possible combination
+
+	// Now join all a's with all b's by generating joins for each possible combination
 
 	// Make sure we have data in both cases, otherwise do not attempt insert any joins
 	if len(a) > 0 && len(b) > 0 {
-    	// Now insert all new ids - NB the order of arguments here MUST match the order in the table
-    	err = q.InsertJoins(a, b)
-    	if err != nil {
-    		return err
-    	}
+		// Now insert all new ids - NB the order of arguments here MUST match the order in the table
+		err = q.InsertJoins(a, b)
+		if err != nil {
+			return err
+		}
 	}
-    
+
 	return nil
 }
 
-// SetJoins above is based on a faulty assumption - that if we have 1 in an array that's the one to use for id. 
+// SetJoins above is based on a faulty assumption - that if we have 1 in an array that's the one to use for id.
 // FALSE we might have 1 in both arrays
-
-
-
 
 func (q *Query) Insert(params map[string]string) (int64, error) {
 
@@ -193,8 +181,8 @@ func (q *Query) Insert(params map[string]string) (int64, error) {
 // Used for update statements, turn params into sql i.e. "col"=?
 // NB we always use parameterized queries, never string values.
 func (q *Query) insertSQL(params map[string]string) string {
-	cols := make([]string, 0)
-	vals := make([]string, 0)
+	var cols, vals []string
+
 	for i, k := range sortedParamKeys(params) {
 		cols = append(cols, database.QuoteField(k))
 		vals = append(vals, database.Placeholder(i+1))
@@ -238,13 +226,12 @@ func (q *Query) UpdateAll(params map[string]string) error {
 // Delete all models specified in this relation
 func (q *Query) DeleteAll() error {
 
-    
 	q.Select(fmt.Sprintf("DELETE FROM %s", q.table()))
-	
-    if Debug {
+
+	if Debug {
 		fmt.Printf("DELETE SQL:%s <= %v\n", q.QueryString(), q.args)
 	}
-    
+
 	// Execute
 	_, err := q.Result()
 
@@ -257,11 +244,10 @@ func (q *Query) Count() (int64, error) {
 	// In order to get consistent results, we use the same query builder
 	// but reset select to simple count select
 	s := q.sel
-	o := strings.Replace(q.sql, "ORDER BY ", "", 1)// FIXME - is this mistaken? Should it in fact be o := q.order?
-	q.order = "" // Order must be blank on count
+	o := strings.Replace(q.sql, "ORDER BY ", "", 1) // FIXME - is this mistaken? Should it in fact be o := q.order?
+	q.order = ""                                    // Order must be blank on count
 	countSelect := fmt.Sprintf("SELECT COUNT(%s) FROM %s", q.pk(), q.table())
-    q.Select(countSelect)
-    
+	q.Select(countSelect)
 
 	// Fetch count from db for our sql
 	var count int64 = 0
@@ -281,7 +267,7 @@ func (q *Query) Count() (int64, error) {
 		}
 
 	}
-    
+
 	// Reset select after getting count query
 	q.Select(s)
 	q.Order(o)
@@ -290,7 +276,6 @@ func (q *Query) Count() (int64, error) {
 	return count, err
 }
 
-
 // Execute the query against the database, returning sql.Result, and error (no rows)
 // (Executes SQL)
 func (q *Query) Result() (sql.Result, error) {
@@ -298,16 +283,12 @@ func (q *Query) Result() (sql.Result, error) {
 	return results, err
 }
 
-
 // Execute the query against the database, and return the sql rows result for this query
 // (Executes SQL)
 func (q *Query) Rows() (*sql.Rows, error) {
 	results, err := database.Query(q.QueryString(), q.args...)
 	return results, err
 }
-
-
-
 
 // Return the next row of results, consumable by a model - the columns returned depend on the sql select
 func (q *Query) FirstResult() (Result, error) {
@@ -322,7 +303,7 @@ func (q *Query) FirstResult() (Result, error) {
 	}
 
 	if len(results) == 0 {
-		return nil, errors.New(fmt.Sprintf("No results found for Query:%s", q.QueryString()))
+		return nil, fmt.Errorf("No results found for Query:%s", q.QueryString())
 	}
 
 	// Return the first result
@@ -334,61 +315,81 @@ func (q *Query) FirstResult() (Result, error) {
 func (q *Query) Results() ([]Result, error) {
 
 	// Make an empty result set map
-	results := make([]Result, 0)
+	var results []Result
 
 	// Fetch rows from db for our sql
 	rows, err := q.Rows()
 
 	if err != nil {
 		return results, fmt.Errorf("Error querying database for rows: %s\nQUERY:%s", err, q)
-	} else {
-		// Close rows before returning
-		defer rows.Close()
+	}
 
-		// Fetch the columns from the database
-		cols, err := rows.Columns()
+	// Close rows before returning
+	defer rows.Close()
+
+	// Fetch the columns from the database
+	cols, err := rows.Columns()
+	if err != nil {
+		return results, fmt.Errorf("Error fetching columns: %s\nQUERY:%s\nCOLS:%s", err, q, cols)
+	}
+
+	// For each row, construct an entry in results with a map of column string keys to values
+	for rows.Next() {
+		result, err := scanRow(cols, rows)
 		if err != nil {
-			return results, fmt.Errorf("Error fetching columns: %s\nQUERY:%s\nCOLS:%s", err, q, cols)
+			return results, fmt.Errorf("Error fetching row: %s\nQUERY:%s\nCOLS:%s", err, q, cols)
 		}
-
-		// For each row, construct an entry in results with a map of column string keys to values
-		for rows.Next() {
-			result, err := scanRow(cols, rows)
-			if err != nil {
-				return results, fmt.Errorf("Error fetching row: %s\nQUERY:%s\nCOLS:%s", err, q, cols)
-			}
-			results = append(results, result)
-		}
-
+		results = append(results, result)
 	}
 
 	return results, nil
 }
 
+// ResultIds returns an array of ids as the result of a query
 func (q *Query) ResultIds() []int64 {
-    var ids []int64
+	var ids []int64
 	if Debug {
 		fmt.Printf("#info ResultIds:%s\n", q.DebugString())
-    }
-    results, err := q.Results()
-    if err != nil {
-        return ids
-    }
-    
-    for _,r := range results {
-        if r["id"] != nil {
-            ids = append(ids,r["id"].(int64))   
-        }
-    }
+	}
+	results, err := q.Results()
+	if err != nil {
+		return ids
+	}
 
-    return ids
+	for _, r := range results {
+		if r["id"] != nil {
+			ids = append(ids, r["id"].(int64))
+		}
+	}
+
+	return ids
 }
 
+// ResultIdSets returns a map from a values to arrays of b values, the order of a,b is respected not the table key order
+func (q *Query) ResultIDSets(a, b string) map[int64][]int64 {
+	idSets := make(map[int64][]int64, 0)
 
+	results, err := q.Results()
+	if err != nil {
+		return idSets
+	}
+
+	for _, r := range results {
+		if r[a] != nil && r[b] != nil {
+			av := r[a].(int64)
+			bv := r[b].(int64)
+			idSets[av] = append(idSets[av], bv)
+		}
+	}
+	if Debug {
+		fmt.Printf("#info ResultIDSets:%s\n", q.DebugString())
+	}
+	return idSets
+}
 
 // I'm in two minds about this - it is neater in that we init with strings
-// but uglier in that we have to 
-// Can we also assign a model which conforms to an interface for - 
+// but uglier in that we have to
+// Can we also assign a model which conforms to an interface for -
 // New() to create each new record
 // Array() to create the array which we append the records to?
 // Avoid using reflect here if we possibly can
@@ -398,8 +399,7 @@ func (q *Query) ResultIds() []int64 {
 // Fetch an array of model objects (Executes SQL)
 // accepts a pointer to an array of model pointers
 func (q *Query) Fetch(sliceptr interface{}) error {
-	
-    
+
 	// Check for errors with sliceptr param - we need a ptr to a slice
 	spv := reflect.ValueOf(sliceptr)
 	if spv.Kind() != reflect.Ptr || spv.IsNil() {
@@ -450,11 +450,6 @@ func (q *Query) Fetch(sliceptr interface{}) error {
 
 	return nil
 }
-
-
-
-
-
 
 // Build a query string to use for results
 func (q *Query) QueryString() string {
@@ -571,6 +566,7 @@ func (q *Query) OrWhere(sql string, args ...interface{}) *Query {
 // rails join example
 // INNER JOIN "posts_tags" ON "posts_tags"."tag_id" = "tags"."id" WHERE "posts_tags"."post_id" = 111
 
+// Join adds an inner join to the query
 func (q *Query) Join(otherModel string) *Query {
 	modelTable := q.tablename
 
@@ -634,8 +630,6 @@ func (q *Query) Select(sql string) *Query {
 	return q
 }
 
-
-
 // Return a debug string with current query + args (for debugging)
 func (q *Query) DebugString() string {
 	return fmt.Sprintf("--\nQuery-SQL:%s\nARGS:%s\n--", q.QueryString(), q.argString())
@@ -676,14 +670,13 @@ func (q *Query) argToString(arg interface{}) string {
 		return fmt.Sprintf("%d", arg)
 	case float32, float64:
 		return fmt.Sprintf("%f", arg)
-    case bool:
+	case bool:
 		return fmt.Sprintf("%d", arg)
-    default:
+	default:
 		return fmt.Sprintf("%v", arg)
- 
+
 	}
 
-	return ""
 }
 
 // Ask model for primary key name to use
@@ -699,7 +692,7 @@ func (q *Query) table() string {
 // Replace ? with whatever database prefers (psql uses numbered args)
 func (q *Query) replaceArgPlaceholders() {
 	// Match ? and replace with argument placeholder from database
-	for i, _ := range q.args {
+	for i := range q.args {
 		q.sql = strings.Replace(q.sql, "?", database.Placeholder(i+1), 1)
 	}
 }
@@ -709,7 +702,7 @@ func (q *Query) replaceArgPlaceholders() {
 func sortedParamKeys(params map[string]string) []string {
 	sortedKeys := make([]string, len(params))
 	i := 0
-	for k, _ := range params {
+	for k := range params {
 		sortedKeys[i] = k
 		i++
 	}
@@ -722,7 +715,7 @@ func sortedParamKeys(params map[string]string) []string {
 func valuesFromParams(params map[string]string) []interface{} {
 
 	// NB DO NOT DEPEND ON PARAMS ORDER - see note on SortedParamKeys
-	values := make([]interface{}, 0)
+	var values []interface{}
 	for _, key := range sortedParamKeys(params) {
 		values = append(values, params[key])
 	}
@@ -731,14 +724,12 @@ func valuesFromParams(params map[string]string) []interface{} {
 
 // Used for update statements, turn params into sql i.e. "col"=?
 func querySQL(params map[string]string) string {
-	output := make([]string, 0)
+	var output []string
 	for _, k := range sortedParamKeys(params) {
 		output = append(output, fmt.Sprintf("%s=?", database.QuoteField(k)))
 	}
 	return strings.Join(output, ",")
 }
-
-
 
 func scanRow(cols []string, rows *sql.Rows) (Result, error) {
 
