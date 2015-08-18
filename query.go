@@ -31,13 +31,13 @@ func init() {
 	Debug = false // default to false
 }
 
-// The results of a query are returned as map[string]interface{} by default
+// Result holds the results of a query as map[string]interface{}
 type Result map[string]interface{}
 
-// A function which applies effects to queries
-type QueryFunc func(q *Query) *Query
+// Func is a function which applies effects to queries
+type Func func(q *Query) *Query
 
-// Struct relation provides all the chainable relational query builder methods
+// Query provides all the chainable relational query builder methods
 type Query struct {
 
 	// Database - database name and primary key, set with New()
@@ -59,7 +59,7 @@ type Query struct {
 	args []interface{}
 }
 
-// Build a new Query, given the table and primary key
+// New builds a new Query, given the table and primary key
 func New(t string, pk string) *Query {
 
 	// If we have no db, return nil
@@ -75,26 +75,28 @@ func New(t string, pk string) *Query {
 	return q
 }
 
-// Execute the given sql and args against the database directly
+// Exec the given sql and args against the database directly
 // Returning sql.Result (NB not rows)
 func Exec(sql string, args ...interface{}) (sql.Result, error) {
 	results, err := database.Exec(sql, args...)
 	return results, err
 }
 
-// Execute the given sql and args against the database directly
+// Rows executes the given sql and args against the database directly
 // Returning sql.Rows
 func Rows(sql string, args ...interface{}) (*sql.Rows, error) {
 	results, err := database.Query(sql, args...)
 	return results, err
 }
 
-// These should instead be something like query.New("table_name").Join(a,b).Insert() and just have one multiple function?
+// TODO: These should instead be something like query.New("table_name").Join(a,b).Insert() and just have one multiple function?
+
+// InsertJoin inserts a join clause on the query
 func (q *Query) InsertJoin(a int64, b int64) error {
 	return q.InsertJoins([]int64{a}, []int64{b})
 }
 
-// Insert joins using an array of ids (more general version of above)
+// InsertJoins using an array of ids (more general version of above)
 // This inserts joins for every possible relation between the ids
 func (q *Query) InsertJoins(a []int64, b []int64) error {
 
@@ -131,7 +133,7 @@ func (q *Query) InsertJoins(a []int64, b []int64) error {
 	return err
 }
 
-// Update the given joins, using the given id to clear joins first
+// UpdateJoins updates the given joins, using the given id to clear joins first
 func (q *Query) UpdateJoins(id int64, a []int64, b []int64) error {
 
 	if Debug {
@@ -158,9 +160,7 @@ func (q *Query) UpdateJoins(id int64, a []int64, b []int64) error {
 	return nil
 }
 
-// SetJoins above is based on a faulty assumption - that if we have 1 in an array that's the one to use for id.
-// FALSE we might have 1 in both arrays
-
+// Insert inserts a record in teh database
 func (q *Query) Insert(params map[string]string) (int64, error) {
 
 	// Insert and retreive ID in one step from db
@@ -178,7 +178,7 @@ func (q *Query) Insert(params map[string]string) (int64, error) {
 	return id, nil
 }
 
-// Used for update statements, turn params into sql i.e. "col"=?
+// insertSQL sets the insert sql for for update statements, turn params into sql i.e. "col"=?
 // NB we always use parameterized queries, never string values.
 func (q *Query) insertSQL(params map[string]string) string {
 	var cols, vals []string
@@ -205,7 +205,7 @@ func (q *Query) Delete() error {
 	return q.DeleteAll()
 }
 
-// Update all models specified in this relation
+// UpdateAll updates all models specified in this relation
 func (q *Query) UpdateAll(params map[string]string) error {
 	// Create sql for update from ALL params
 	q.Select(fmt.Sprintf("UPDATE %s SET %s", q.table(), querySQL(params)))
@@ -223,7 +223,7 @@ func (q *Query) UpdateAll(params map[string]string) error {
 	return err
 }
 
-// Delete all models specified in this relation
+// DeleteAll delets *all* models specified in this relation
 func (q *Query) DeleteAll() error {
 
 	q.Select(fmt.Sprintf("DELETE FROM %s", q.table()))
@@ -238,7 +238,7 @@ func (q *Query) DeleteAll() error {
 	return err
 }
 
-// Fetch a count of model objects (executes SQL).
+// Count fetches a count of model objects (executes SQL).
 func (q *Query) Count() (int64, error) {
 
 	// In order to get consistent results, we use the same query builder
@@ -250,22 +250,20 @@ func (q *Query) Count() (int64, error) {
 	q.Select(countSelect)
 
 	// Fetch count from db for our sql
-	var count int64 = 0
+	var count int64
 	rows, err := q.Rows()
 
 	if err != nil {
 		return 0, fmt.Errorf("Error querying database for count: %s\nQuery:%s", err, q.QueryString())
 
-	} else {
-		defer rows.Close()
-		// We expect just one row, with one column (count)
-		for rows.Next() {
-			err := rows.Scan(&count)
-			if err != nil {
-				return 0, err
-			}
+	}
+	defer rows.Close()
+	// We expect just one row, with one column (count)
+	for rows.Next() {
+		err := rows.Scan(&count)
+		if err != nil {
+			return 0, err
 		}
-
 	}
 
 	// Reset select after getting count query
@@ -276,21 +274,21 @@ func (q *Query) Count() (int64, error) {
 	return count, err
 }
 
-// Execute the query against the database, returning sql.Result, and error (no rows)
+// Result executes the query against the database, returning sql.Result, and error (no rows)
 // (Executes SQL)
 func (q *Query) Result() (sql.Result, error) {
 	results, err := database.Exec(q.QueryString(), q.args...)
 	return results, err
 }
 
-// Execute the query against the database, and return the sql rows result for this query
+// Rows executes the query against the database, and return the sql rows result for this query
 // (Executes SQL)
 func (q *Query) Rows() (*sql.Rows, error) {
 	results, err := database.Query(q.QueryString(), q.args...)
 	return results, err
 }
 
-// Return the next row of results, consumable by a model - the columns returned depend on the sql select
+// FirstResult executes the SQL and returrns the first result
 func (q *Query) FirstResult() (Result, error) {
 
 	// Set a limit on the query
@@ -310,8 +308,7 @@ func (q *Query) FirstResult() (Result, error) {
 	return results[0], nil
 }
 
-// Return the next row of results, consumable by a model - the columns returned depend on the sql select
-// this allows handling returns of partial data or joined data without scanning into custom structs
+// Results returns an array of results
 func (q *Query) Results() ([]Result, error) {
 
 	// Make an empty result set map
@@ -345,6 +342,8 @@ func (q *Query) Results() ([]Result, error) {
 	return results, nil
 }
 
+// FIXME - rename to ResultIDs for consistency with go standards
+
 // ResultIds returns an array of ids as the result of a query
 func (q *Query) ResultIds() []int64 {
 	var ids []int64
@@ -365,7 +364,7 @@ func (q *Query) ResultIds() []int64 {
 	return ids
 }
 
-// ResultIdSets returns a map from a values to arrays of b values, the order of a,b is respected not the table key order
+// ResultIDSets returns a map from a values to arrays of b values, the order of a,b is respected not the table key order
 func (q *Query) ResultIDSets(a, b string) map[int64][]int64 {
 	idSets := make(map[int64][]int64, 0)
 
@@ -411,39 +410,37 @@ func (q *Query) Fetch(sliceptr interface{}) error {
 
 	if err != nil {
 		return fmt.Errorf("Error querying database for rows: %s\nQUERY:%s", err, q.QueryString())
-	} else {
+	}
 
-		defer rows.Close()
-		// We iterate over the rows and pass the column values to the model to update it
-		cols, err := rows.Columns()
-		if err != nil {
-			return fmt.Errorf("Error fetching columns: %s\nQUERY:%s\nCOLS:%s", err, q.QueryString(), cols)
+	defer rows.Close()
+	// We iterate over the rows and pass the column values to the model to update it
+	cols, err := rows.Columns()
+	if err != nil {
+		return fmt.Errorf("Error fetching columns: %s\nQUERY:%s\nCOLS:%s", err, q.QueryString(), cols)
+	}
+
+	// Use of reflection unavoidable here without ugly casts from caller
+	// This is nasty and I'd prefer to remove it, but appears to be required by Golang's type system
+	// Unless we pass in the New func or model...
+
+	mt := spv.Type().Elem().Elem().Elem()
+
+	models := spv.Elem()
+
+	for rows.Next() {
+		result, err := scanRow(cols, rows)
+		if err != nil || result == nil {
+			return fmt.Errorf("Error scanning row: %s", err)
 		}
 
-		// Use of reflection unavoidable here without ugly casts from caller
-		// This is nasty and I'd prefer to remove it, but appears to be required by Golang's type system
-		// Unless we pass in the New func or model...
-
-		mt := spv.Type().Elem().Elem().Elem()
-
-		models := spv.Elem()
-
-		for rows.Next() {
-			result, err := scanRow(cols, rows)
-			if err != nil || result == nil {
-				return fmt.Errorf("Error scanning row: %s", err)
-			}
-
-			vp := reflect.New(mt)
-			mf := vp.MethodByName("New")
-			if mf != *new(reflect.Value) {
-				// Call New on model *if* the function exists - need to check signature too...
-				mv := mf.Call([]reflect.Value{reflect.ValueOf(result)})
-				models.Set(reflect.Append(models, mv[0]))
-			} else {
-				models.Set(reflect.Append(models, vp))
-			}
-
+		vp := reflect.New(mt)
+		mf := vp.MethodByName("New")
+		if mf != *new(reflect.Value) {
+			// Call New on model *if* the function exists - need to check signature too...
+			mv := mf.Call([]reflect.Value{reflect.ValueOf(result)})
+			models.Set(reflect.Append(models, mv[0]))
+		} else {
+			models.Set(reflect.Append(models, vp))
 		}
 
 	}
@@ -451,7 +448,7 @@ func (q *Query) Fetch(sliceptr interface{}) error {
 	return nil
 }
 
-// Build a query string to use for results
+// QueryString builds a query string to use for results
 func (q *Query) QueryString() string {
 
 	if q.sql == "" {
@@ -478,44 +475,43 @@ func (q *Query) QueryString() string {
 
 // CHAINABLE FINDERS
 
-// Apply the QueryFunc to this query, and return the modified Query
+// Apply the Func to this query, and return the modified Query
 // This allows chainable finders from other packages
-// e.g. q.Apply(status.Published) where status.Published is a QueryFunc
-func (q *Query) Apply(f QueryFunc) *Query {
+// e.g. q.Apply(status.Published) where status.Published is a Func
+func (q *Query) Apply(f Func) *Query {
 	return f(q)
 }
 
-// Apply the conditions to this - this allows conditions to be applied from other packages
-// e.g. q.Conditions(role.Owner,status.Published)
-func (q *Query) Conditions(funcs ...QueryFunc) *Query {
+// Conditions applies a series of query funcs to a query
+func (q *Query) Conditions(funcs ...Func) *Query {
 	for _, f := range funcs {
 		q = f(q)
 	}
 	return q
 }
 
-// Define all sql together - overrides all other setters
+// Sql defines sql manually and overrides all other setters
 func (q *Query) Sql(sql string) *Query {
 	q.sql = sql // Completely replace all stored sql
 	q.reset()
 	return q
 }
 
-// Define limit with an int
+// Limit sets the sql LIMIT with an int
 func (q *Query) Limit(limit int) *Query {
 	q.limit = fmt.Sprintf("LIMIT %d", limit)
 	q.reset()
 	return q
 }
 
-// Define limit with an int
+// Offset sets the sql OFFSET with an int
 func (q *Query) Offset(offset int) *Query {
 	q.offset = fmt.Sprintf("OFFSET %d", offset)
 	q.reset()
 	return q
 }
 
-// Define where clause on SQL - Additional calls add WHERE () AND () clauses
+// Where defines a WHERE clause on SQL - Additional calls add WHERE () AND () clauses
 func (q *Query) Where(sql string, args ...interface{}) *Query {
 
 	if len(q.where) > 0 {
@@ -538,7 +534,7 @@ func (q *Query) Where(sql string, args ...interface{}) *Query {
 	return q
 }
 
-// Define where clause on SQL - Additional calls add WHERE () OR () clauses
+// OrWhere defines a where clause on SQL - Additional calls add WHERE () OR () clauses
 func (q *Query) OrWhere(sql string, args ...interface{}) *Query {
 
 	if len(q.where) > 0 {
@@ -553,6 +549,26 @@ func (q *Query) OrWhere(sql string, args ...interface{}) *Query {
 		} else {
 			q.args = append(q.args, args...)
 		}
+	}
+
+	q.reset()
+	return q
+}
+
+// WhereIn defines a where clause in SQL which selects records IN() the given array
+func (q *Query) WhereIn(col string, IDs []int64) *Query {
+
+	in := ""
+	for _, ID := range IDs {
+		in = fmt.Sprintf("%s%d,", in, ID)
+	}
+	in = strings.TrimRight(in, ",")
+	sql := fmt.Sprintf("%s IN (%s)", col, in)
+
+	if len(q.where) > 0 {
+		q.where = fmt.Sprintf("%s AND (%s)", q.where, sql)
+	} else {
+		q.where = fmt.Sprintf("WHERE (%s)", sql)
 	}
 
 	q.reset()
@@ -589,7 +605,7 @@ func (q *Query) Join(otherModel string) *Query {
 	return q
 }
 
-// Define order sql
+// Order defines ORDER BY sql
 func (q *Query) Order(sql string) *Query {
 	if sql == "" {
 		q.order = ""
@@ -601,7 +617,7 @@ func (q *Query) Order(sql string) *Query {
 	return q
 }
 
-// Define group by sql
+// Group defines GROUP BY sql
 func (q *Query) Group(sql string) *Query {
 	if sql == "" {
 		q.group = ""
@@ -612,7 +628,7 @@ func (q *Query) Group(sql string) *Query {
 	return q
 }
 
-// Define having sql
+// Having defines HAVING sql
 func (q *Query) Having(sql string) *Query {
 	if sql == "" {
 		q.having = ""
@@ -623,14 +639,14 @@ func (q *Query) Having(sql string) *Query {
 	return q
 }
 
-// Define select sql
+// Select defines SELECT  sql
 func (q *Query) Select(sql string) *Query {
 	q.sel = sql
 	q.reset()
 	return q
 }
 
-// Return a debug string with current query + args (for debugging)
+// DebugString returns a query representation string useful for debugging
 func (q *Query) DebugString() string {
 	return fmt.Sprintf("--\nQuery-SQL:%s\nARGS:%s\n--", q.QueryString(), q.argString())
 }

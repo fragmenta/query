@@ -6,8 +6,8 @@ CREATE TABLE pages (
     text text,
     keywords text,
     status integer,
-    created_at timestamp with time zone NOT NULL,
-    updated_at timestamp with time zone NOT NULL,
+    created_at timestamp NOT NULL,
+    updated_at timestamp NOT NULL,
     url text,
     summary text
 );
