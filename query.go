@@ -160,7 +160,7 @@ func (q *Query) UpdateJoins(id int64, a []int64, b []int64) error {
 	return nil
 }
 
-// Insert inserts a record in teh database
+// Insert inserts a record in the database
 func (q *Query) Insert(params map[string]string) (int64, error) {
 
 	// Insert and retreive ID in one step from db
@@ -178,7 +178,7 @@ func (q *Query) Insert(params map[string]string) (int64, error) {
 	return id, nil
 }
 
-// insertSQL sets the insert sql for for update statements, turn params into sql i.e. "col"=?
+// insertSQL sets the insert sql for update statements, turn params into sql i.e. "col"=?
 // NB we always use parameterized queries, never string values.
 func (q *Query) insertSQL(params map[string]string) string {
 	var cols, vals []string

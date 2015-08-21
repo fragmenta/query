@@ -4,17 +4,15 @@ package adapters
 // These are only used on Mac OS X - see if you can find a solution to this
 // Ignore this file when cross-compiling for linux?
 
-
 import (
 	"database/sql"
 	"fmt"
 
-    
-    // Unfortunately can't cross compile this - see
-    // https://github.com/mattn/go-sqlite3/issues/106
-    // For now for xcompile we just turn off sqlite as we don't use it in production...
-    // any other approach we can use so tests pass?
-   // _ "github.com/mattn/go-sqlite3"
+	// Unfortunately can't cross compile this - see
+	// https://github.com/mattn/go-sqlite3/issues/106
+	// For now for xcompile we just turn off sqlite as we don't use it in production...
+	// any other approach we can use so tests pass?
+	// _ "github.com/mattn/go-sqlite3"
 )
 
 // Adapters conform to the query.Database interface
