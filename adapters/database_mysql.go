@@ -49,6 +49,12 @@ func (db *MysqlAdapter) Open(opts map[string]string) error {
 		return fmt.Errorf("\nError creating database with options:", db.options)
 	}
 
+	// Call ping on the db to check it does actually exist!
+	err = db.sqlDB.Ping()
+	if err != nil {
+		return err
+	}
+
 	return err
 
 }

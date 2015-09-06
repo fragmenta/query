@@ -36,8 +36,7 @@ func (db *PostgresqlAdapter) Open(opts map[string]string) error {
 	for k, v := range opts {
 		db.options[k] = v
 	}
-    
-  
+
 	// Default to psql database
 	options_string := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=%s", db.options["user"], db.options["password"], db.options["db"], db.options["sslmode"])
 	var err error
@@ -46,11 +45,17 @@ func (db *PostgresqlAdapter) Open(opts map[string]string) error {
 		return err
 	}
 
+	// Call ping on the db to check it does actually exist!
+	err = db.sqlDB.Ping()
+	if err != nil {
+		return err
+	}
+
 	if db.sqlDB != nil && db.debug {
 		fmt.Printf("Database %s opened using %s\n", db.options["db"], db.options["adapter"])
 	}
 
-	return err
+	return nil
 
 }
 

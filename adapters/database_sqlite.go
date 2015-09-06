@@ -50,6 +50,12 @@ func (db *SqliteAdapter) Open(opts map[string]string) error {
 		fmt.Printf("Database %s opened using %s\n", db.options["db"], db.options["adapter"])
 	}
 
+	// Call ping on the db to check it does actually exist!
+	err = db.sqlDB.Ping()
+	if err != nil {
+		return err
+	}
+
 	return err
 
 }
