@@ -1,15 +1,5 @@
 // Package Query lets you build and execute SQL chainable queries against a database of your choice, and defer execution of SQL until you wish to extract a count or array of models.
 
-// TODO  // Decide on the best interface:
-
-// var pages []*Page
-// err := q.Fetch(&pages)
-// OR
-// pages, err := PagesResults(q)
-// I think I prefer fetch & because then it is clear what type you have
-// if so then FetchFirst() instead of FirstResult?
-// We should pick one of these options and go with it...
-
 // NB in order to allow cross-compilation, we exlude sqlite drivers by default
 // uncomment them to allow use of sqlite
 
@@ -17,12 +7,12 @@ package query
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
-	"reflect"
 	"sort"
 	"strings"
 )
+
+// FIXME - this package global should in theory be protected by a mutex, even if it is only for debugging
 
 // query.Debug sets whether we output debug statements for SQL
 var Debug bool
@@ -244,8 +234,8 @@ func (q *Query) Count() (int64, error) {
 	// In order to get consistent results, we use the same query builder
 	// but reset select to simple count select
 	s := q.sel
-	o := strings.Replace(q.sql, "ORDER BY ", "", 1) // FIXME - is this mistaken? Should it in fact be o := q.order?
-	q.order = ""                                    // Order must be blank on count
+	o := q.order
+	q.order = "" // Order must be blank on count because of limited select
 	countSelect := fmt.Sprintf("SELECT COUNT(%s) FROM %s", q.pk(), q.table())
 	q.Select(countSelect)
 
@@ -342,13 +332,11 @@ func (q *Query) Results() ([]Result, error) {
 	return results, nil
 }
 
-// FIXME - rename to ResultIDs for consistency with go standards
-
-// ResultIds returns an array of ids as the result of a query
-func (q *Query) ResultIds() []int64 {
+// ResultIDs returns an array of ids as the result of a query
+func (q *Query) ResultIDs() []int64 {
 	var ids []int64
 	if Debug {
-		fmt.Printf("#info ResultIds:%s\n", q.DebugString())
+		fmt.Printf("#info ResultIDs:%s\n", q.DebugString())
 	}
 	results, err := q.Results()
 	if err != nil {
@@ -384,68 +372,6 @@ func (q *Query) ResultIDSets(a, b string) map[int64][]int64 {
 		fmt.Printf("#info ResultIDSets:%s\n", q.DebugString())
 	}
 	return idSets
-}
-
-// I'm in two minds about this - it is neater in that we init with strings
-// but uglier in that we have to
-// Can we also assign a model which conforms to an interface for -
-// New() to create each new record
-// Array() to create the array which we append the records to?
-// Avoid using reflect here if we possibly can
-
-// FIXME - reasses whether we want to provide this interface before release?
-
-// Fetch an array of model objects (Executes SQL)
-// accepts a pointer to an array of model pointers
-func (q *Query) Fetch(sliceptr interface{}) error {
-
-	// Check for errors with sliceptr param - we need a ptr to a slice
-	spv := reflect.ValueOf(sliceptr)
-	if spv.Kind() != reflect.Ptr || spv.IsNil() {
-		return errors.New("Valid slice pointer required")
-	}
-
-	// Fetch rows from db for our sql
-	rows, err := q.Rows()
-
-	if err != nil {
-		return fmt.Errorf("Error querying database for rows: %s\nQUERY:%s", err, q.QueryString())
-	}
-
-	defer rows.Close()
-	// We iterate over the rows and pass the column values to the model to update it
-	cols, err := rows.Columns()
-	if err != nil {
-		return fmt.Errorf("Error fetching columns: %s\nQUERY:%s\nCOLS:%s", err, q.QueryString(), cols)
-	}
-
-	// Use of reflection unavoidable here without ugly casts from caller
-	// This is nasty and I'd prefer to remove it, but appears to be required by Golang's type system
-	// Unless we pass in the New func or model...
-
-	mt := spv.Type().Elem().Elem().Elem()
-
-	models := spv.Elem()
-
-	for rows.Next() {
-		result, err := scanRow(cols, rows)
-		if err != nil || result == nil {
-			return fmt.Errorf("Error scanning row: %s", err)
-		}
-
-		vp := reflect.New(mt)
-		mf := vp.MethodByName("New")
-		if mf != *new(reflect.Value) {
-			// Call New on model *if* the function exists - need to check signature too...
-			mv := mf.Call([]reflect.Value{reflect.ValueOf(result)})
-			models.Set(reflect.Append(models, mv[0]))
-		} else {
-			models.Set(reflect.Append(models, vp))
-		}
-
-	}
-
-	return nil
 }
 
 // QueryString builds a query string to use for results
@@ -765,10 +691,11 @@ func scanRow(cols []string, rows *sql.Rows) (Result, error) {
 	}
 
 	// Make a string => interface map and hand off to caller
+	// We fix up a few types which the pq driver returns as less handy equivalents
+	// We enforce usage of int64 at all times as all our records use int64
 	for i := 0; i < len(cols); i++ {
-		value := reflect.Indirect(reflect.ValueOf(values[i]))
 		v := *values[i].(*interface{})
-		if value.Interface() != nil {
+		if values[i] != nil {
 			switch v.(type) {
 			default:
 				result[cols[i]] = v
