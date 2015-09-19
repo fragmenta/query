@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+// FIXME - tests for this package are currently broken and use the old scheme
+
 // Enable db debug mode to enable query logging
 var debug string = "false"
 
@@ -112,19 +114,6 @@ func (p *Page) String() string {
 	return fmt.Sprintf("%d-%s-Last updated:%s", p.Id, p.Title, p.UpdatedAt)
 }
 
-/*
-// TO REMOVE FIXME when query New is fixed...
-
-// Default table name is lowercase plural of class name, but can be anything
-func (p *Page) Table() string {
-	return "pages"
-}
-
-// Use id for primary key
-func (p *Page) PrimaryKey() string {
-	return "id"
-}
-*/
 // Fetch all results for this query
 func PageFind(id int64) (*Page, error) {
 	result, err := PageQuery().Where("id=?", id).FirstResult()
@@ -273,11 +262,6 @@ func TestSQCount(t *testing.T) {
 func TestSQWhere(t *testing.T) {
 
 	q := PageQuery().Where("id > ?", 1)
-
-    // Decide on the best interface:
-
-	//   var pages []*Page
-	//   err := q.Fetch(&pages)
 
 	pages, err := PagesResults(q)
 
