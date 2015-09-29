@@ -38,6 +38,8 @@ func (db *PostgresqlAdapter) Open(opts map[string]string) error {
 	}
 
 	// Default to psql database
+	// TODO: add host= and port= options here, with default values of localhost:5432
+	// which can be set from opts
 	options_string := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=%s", db.options["user"], db.options["password"], db.options["db"], db.options["sslmode"])
 	var err error
 	db.sqlDB, err = sql.Open(db.options["adapter"], options_string)
