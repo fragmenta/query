@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-// An interface for database adapters to conform to
+// Database provides an interface for database adapters to conform to
 type Database interface {
 
 	// Open and close
 	Open(opts map[string]string) error
 	Close() error
-	SqlDB() *sql.DB
+	SQLDB() *sql.DB
 
 	// Execute queries with or without returned rows
 	Exec(query string, args ...interface{}) (sql.Result, error)
@@ -35,29 +35,30 @@ type Database interface {
 
 	// Convert a string to a time
 	ParseTime(s string) (time.Time, error)
-
 }
 
-// A struct defining a few functions used by all adapters
+// Adapter is a struct defining a few functions used by all adapters
 type Adapter struct {
 	queries map[string]interface{}
 }
 
-// Do no replacements by default, and use default ? placeholder for args
+// ReplaceArgPlaceholder does no replacements by default, and use default ? placeholder for args
 // psql requires a different placeholder numericall labelled
 func (db *Adapter) ReplaceArgPlaceholder(sql string, args []interface{}) string {
 	return sql
 }
+
+// Placeholder is the argument placeholder for this adapter
 func (db *Adapter) Placeholder(i int) string {
 	return "?"
 }
 
-// Given a time, return the standard string representation
+// TimeString - given a time, return the standard string representation
 func (db *Adapter) TimeString(t time.Time) string {
 	return t.Format("2006-01-02 15:04:05.000 -0700")
 }
 
-// Given a string, return a time object built from it
+// ParseTime - given a string, return a time object built from it
 func (db *Adapter) ParseTime(s string) (time.Time, error) {
 
 	// Deal with broken mysql dates - deal better with this?
@@ -82,17 +83,17 @@ func (db *Adapter) ParseTime(s string) (time.Time, error) {
 	return t, err
 }
 
-// Quote a table name or column name 
+// QuoteField quotes a table name or column name
 func (db *Adapter) QuoteField(name string) string {
 	return fmt.Sprintf(`"%s"`, name)
 }
 
-// Extra SQL for end of insert statement (RETURNING for psql)
+// InsertSQL provides extra SQL for end of insert statement (RETURNING for psql)
 func (db *Adapter) InsertSQL(pk string) string {
 	return ""
 }
 
-// Execute Query SQL on the given sqlDB and return the rows. 
+// performQuery executes Query SQL on the given sqlDB and return the rows.
 // NB caller must call use defer rows.Close() with rows returned
 func (db *Adapter) performQuery(sqlDB *sql.DB, debug bool, query string, args ...interface{}) (*sql.Rows, error) {
 
@@ -122,7 +123,7 @@ func (db *Adapter) performQuery(sqlDB *sql.DB, debug bool, query string, args ..
 	return rows, err
 }
 
-// Execute Query SQL on the given sqlDB with no rows returned, just result
+// performExec executes Query SQL on the given sqlDB with no rows returned, just result
 func (db *Adapter) performExec(sqlDB *sql.DB, debug bool, query string, args ...interface{}) (sql.Result, error) {
 
 	if sqlDB == nil {

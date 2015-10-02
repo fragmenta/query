@@ -1,21 +1,21 @@
 package adapters
 
-// Sqlite drivers are broken compiling with cgo at present
-// These are only used on Mac OS X - see if you can find a solution to this
-// Ignore this file when cross-compiling for linux?
+// FIXME: Sqlite drivers are broken compiling with cgo at present
+// therefore we don't use this adapter
 
 import (
 	"database/sql"
 	"fmt"
 
-	// Unfortunately can't cross compile this - see
-	// https://github.com/mattn/go-sqlite3/issues/106
-	// For now for xcompile we just turn off sqlite as we don't use it in production...
-	// any other approach we can use so tests pass?
-	// _ "github.com/mattn/go-sqlite3"
+	// Unfortunately can't cross compile with sqlite support enabled -
+	// see https://github.com/mattn/go-sqlite3/issues/106
+	// For now for we just turn off sqlite as we don't use it in production...
+	// pure go version of sqlite, or ditch sqlite and find some other pure go simple db
+	// would be nice not to require a db at all for very simple usage
+	//_ "github.com/mattn/go-sqlite3"
 )
 
-// Adapters conform to the query.Database interface
+// SqliteAdapter conforms to the query.Database interface
 type SqliteAdapter struct {
 	*Adapter
 	options map[string]string
@@ -68,12 +68,12 @@ func (db *SqliteAdapter) Close() error {
 	return nil
 }
 
-// Return the internal db.sqlDB pointer
-func (db *SqliteAdapter) SqlDB() *sql.DB {
+// SQLDB returns the internal db.sqlDB pointer
+func (db *SqliteAdapter) SQLDB() *sql.DB {
 	return db.sqlDB
 }
 
-// Execute Query SQL - NB caller must call use defer rows.Close() with rows returned
+// Query execute Query SQL - NB caller must call use defer rows.Close() with rows returned
 func (db *SqliteAdapter) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.performQuery(db.sqlDB, db.debug, query, args...)
 }

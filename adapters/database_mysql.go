@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	// Mysql driver
-	//_ "github.com/Go-SQL-Driver/MySQL"
+	_ "github.com/go-sql-driver/mysql"
 )
 
-// Adapters conform to the query.Database interface
+// MysqlAdapter conforms to the query.Database interface
 type MysqlAdapter struct {
 	*Adapter
 	options map[string]string
@@ -22,7 +22,7 @@ func (db *MysqlAdapter) Open(opts map[string]string) error {
 	db.debug = false
 	db.options = map[string]string{
 		"adapter":  "mysql",
-		"user":     "root",
+		"user":     "root", // sub your user
 		"password": "",
 		"db":       "query_test",
 	}
@@ -36,8 +36,8 @@ func (db *MysqlAdapter) Open(opts map[string]string) error {
 		db.options[k] = v
 	}
 
-	//"user:password@/dbname?charset=utf8")
-	options := fmt.Sprintf("%s:%s@/%s?charset=utf8", db.options["user"], db.options["password"], db.options["db"])
+	//"user:password@/dbname?charset=utf8")// &parseTime=true failing
+	options := fmt.Sprintf("%s:%s@/%s?charset=utf8&parseTime=true", db.options["user"], db.options["password"], db.options["db"])
 	var err error
 	db.sqlDB, err = sql.Open(db.options["adapter"], options)
 	if err != nil {
@@ -45,8 +45,8 @@ func (db *MysqlAdapter) Open(opts map[string]string) error {
 	}
 
 	if db.sqlDB == nil {
-		println("Mysql options:%s", options)
-		return fmt.Errorf("\nError creating database with options:", db.options)
+		fmt.Printf("Mysql options:%s", options)
+		return fmt.Errorf("\nError creating database with options: %v", db.options)
 	}
 
 	// Call ping on the db to check it does actually exist!
@@ -67,12 +67,12 @@ func (db *MysqlAdapter) Close() error {
 	return nil
 }
 
-// Return the internal db.sqlDB pointer
-func (db *MysqlAdapter) SqlDB() *sql.DB {
+// SQLDB returns the internal db.sqlDB pointer
+func (db *MysqlAdapter) SQLDB() *sql.DB {
 	return db.sqlDB
 }
 
-// Execute Query SQL - NB caller must call use defer rows.Close() with rows returned
+// Query SQL execute - NB caller must call use defer rows.Close() with rows returned
 func (db *MysqlAdapter) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.performQuery(db.sqlDB, db.debug, query, args...)
 }
@@ -82,7 +82,7 @@ func (db *MysqlAdapter) Exec(query string, args ...interface{}) (sql.Result, err
 	return db.performExec(db.sqlDB, db.debug, query, args...)
 }
 
-// Quote a table name or column name
+// QuoteField quotes a table name or column name
 func (db *MysqlAdapter) QuoteField(name string) string {
 	return fmt.Sprintf("`%s`", name)
 }

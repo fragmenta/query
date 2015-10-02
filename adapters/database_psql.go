@@ -8,7 +8,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// Adapters conform to the query.Database interface
+// PostgresqlAdapter conforms to the query.Database interface
 type PostgresqlAdapter struct {
 	*Adapter
 	options map[string]string
@@ -40,9 +40,13 @@ func (db *PostgresqlAdapter) Open(opts map[string]string) error {
 	// Default to psql database
 	// TODO: add host= and port= options here, with default values of localhost:5432
 	// which can be set from opts
-	options_string := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=%s", db.options["user"], db.options["password"], db.options["db"], db.options["sslmode"])
+	password := ""
+	if len(db.options["password"]) > 0 {
+		password = fmt.Sprintf("password=%s", db.options["password"])
+	}
+	optionString := fmt.Sprintf("user=%s %s dbname=%s sslmode=%s", db.options["user"], password, db.options["db"], db.options["sslmode"])
 	var err error
-	db.sqlDB, err = sql.Open(db.options["adapter"], options_string)
+	db.sqlDB, err = sql.Open(db.options["adapter"], optionString)
 	if err != nil {
 		return err
 	}
@@ -69,12 +73,12 @@ func (db *PostgresqlAdapter) Close() error {
 	return nil
 }
 
-// Return the internal db.sqlDB pointer
-func (db *PostgresqlAdapter) SqlDB() *sql.DB {
+// SQLDB returns the internal db.sqlDB pointer
+func (db *PostgresqlAdapter) SQLDB() *sql.DB {
 	return db.sqlDB
 }
 
-// Execute Query SQL - NB caller must call use defer rows.Close() with rows returned
+// Query executes query SQL - NB caller must call use defer rows.Close() with rows returned
 func (db *PostgresqlAdapter) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.performQuery(db.sqlDB, db.debug, query, args...)
 }
@@ -84,11 +88,12 @@ func (db *PostgresqlAdapter) Exec(query string, args ...interface{}) (sql.Result
 	return db.performExec(db.sqlDB, db.debug, query, args...)
 }
 
+// Placeholder returns the db placeholder
 func (db *PostgresqlAdapter) Placeholder(i int) string {
 	return fmt.Sprintf("$%d", i)
 }
 
-// Extra SQL for end of insert statement (RETURNING for psql)
+// InsertSQL is extra SQL for end of insert statement (RETURNING for psql)
 func (db *PostgresqlAdapter) InsertSQL(pk string) string {
 	return fmt.Sprintf("RETURNING %s", pk)
 }

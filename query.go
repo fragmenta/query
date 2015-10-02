@@ -233,22 +233,26 @@ func (q *Query) Count() (int64, error) {
 
 	// In order to get consistent results, we use the same query builder
 	// but reset select to simple count select
+
+	// Store the previous select and set
 	s := q.sel
-	o := q.order
-	q.order = "" // Order must be blank on count because of limited select
 	countSelect := fmt.Sprintf("SELECT COUNT(%s) FROM %s", q.pk(), q.table())
 	q.Select(countSelect)
 
-	// Fetch count from db for our sql
+	// Store the previous order (minus order by) and set to empty
+	// Order must be blank on count because of limited select
+	o := strings.Replace(q.order, "ORDER BY ", "", 1)
+	q.order = ""
+
+	// Fetch count from db for our sql with count select and no order set
 	var count int64
 	rows, err := q.Rows()
-
 	if err != nil {
 		return 0, fmt.Errorf("Error querying database for count: %s\nQuery:%s", err, q.QueryString())
-
 	}
-	defer rows.Close()
+
 	// We expect just one row, with one column (count)
+	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&count)
 		if err != nil {
@@ -416,9 +420,10 @@ func (q *Query) Conditions(funcs ...Func) *Query {
 	return q
 }
 
-// Sql defines sql manually and overrides all other setters
-func (q *Query) Sql(sql string) *Query {
-	q.sql = sql // Completely replace all stored sql
+// SQL defines sql manually and overrides all other setters
+// Completely replaces all stored sql
+func (q *Query) SQL(sql string) *Query {
+	q.sql = sql
 	q.reset()
 	return q
 }

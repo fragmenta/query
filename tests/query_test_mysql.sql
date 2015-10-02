@@ -1,4 +1,4 @@
-/* Database created using psql for tests - query_test */
+/* Database created using mysql for tests - query_test */
 DROP TABLE pages;
 CREATE TABLE pages (
     id integer NOT NULL PRIMARY KEY AUTO_INCREMENT,
@@ -11,7 +11,6 @@ CREATE TABLE pages (
     url text,
     summary text
 );
-
 
 insert into pages VALUES(1,'Title 1.','test 1 text','keywords1',100,NOW(),NOW(),'test.example.com','');
 insert into pages VALUES(2,'Title 2','test 2 text','keywords 2',100,NOW(),NOW(),'test.example.com','');

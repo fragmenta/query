@@ -1,4 +1,4 @@
-/* Database created using psql for tests - query_test */
+/* Database created using sqlite for tests - query_test */
 DROP TABLE pages;
 CREATE TABLE pages (
     id integer NOT NULL PRIMARY KEY,
