@@ -136,8 +136,8 @@ func TestPQSetup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DB Test Error %v", err)
 	}
-	go io.Copy(os.Stdout, stdout)
-	go io.Copy(os.Stderr, stderr)
+	io.Copy(os.Stdout, stdout)
+	io.Copy(os.Stderr, stderr)
 	cmd.Wait()
 
 	if err == nil {
@@ -447,8 +447,8 @@ func TestMysqlSetup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MYSQL DB ERROR: %s", err)
 	}
-	go io.Copy(os.Stdout, stdout)
-	go io.Copy(os.Stderr, stderr)
+	io.Copy(os.Stdout, stdout)
+	io.Copy(os.Stderr, stderr)
 	cmd.Wait()
 
 	if err == nil {
