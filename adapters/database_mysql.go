@@ -25,6 +25,10 @@ func (db *MysqlAdapter) Open(opts map[string]string) error {
 		"user":     "root", // sub your user
 		"password": "",
 		"db":       "query_test",
+		"protocol": "tcp",
+		"host":     "localhost",
+		"port":     "3306",
+		"params":   "charset=utf8&parseTime=true",
 	}
 
 	if opts["debug"] == "true" {
@@ -36,8 +40,17 @@ func (db *MysqlAdapter) Open(opts map[string]string) error {
 		db.options[k] = v
 	}
 
-	//"user:password@/dbname?charset=utf8")// &parseTime=true failing
-	options := fmt.Sprintf("%s:%s@/%s?charset=utf8&parseTime=true", db.options["user"], db.options["password"], db.options["db"])
+	// A typical connection string is of the form:
+	//"user:password@tcp(localhost:3306)/dbname?charset=utf8&parseTime=true")
+	options := fmt.Sprintf("%s:%s@%s(%s:%s)/%s?%s",
+		db.options["user"],
+		db.options["password"],
+		db.options["protocol"],
+		db.options["host"],
+		db.options["port"],
+		db.options["db"],
+		db.options["params"])
+
 	var err error
 	db.sqlDB, err = sql.Open(db.options["adapter"], options)
 	if err != nil {
