@@ -16,7 +16,10 @@ type PostgresqlAdapter struct {
 	debug   bool
 }
 
-// Open this database
+// Open this database with the given options
+// opts map keys:adapter, user, password, db, host, port, params (give extra parameters in the params option)
+// Additional options available are detailed in the pq driver docs at
+// https://godoc.org/github.com/lib/pq
 func (db *PostgresqlAdapter) Open(opts map[string]string) error {
 
 	db.debug = false
@@ -25,7 +28,9 @@ func (db *PostgresqlAdapter) Open(opts map[string]string) error {
 		"user":     "",
 		"password": "",
 		"db":       "",
-		"sslmode":  "disable",
+		"host":     "localhost",                          // for unix instead of tcp use path - see driver
+		"port":     "5432",                               // default PSQL port
+		"params":   "sslmode=disable connect_timeout=60", // disable sslmode for localhost, set timeout
 	}
 
 	if opts["debug"] == "true" {
@@ -37,14 +42,17 @@ func (db *PostgresqlAdapter) Open(opts map[string]string) error {
 		db.options[k] = v
 	}
 
-	// Default to psql database
-	// TODO: add host= and port= options here, with default values of localhost:5432
-	// which can be set from opts
-	password := ""
-	if len(db.options["password"]) > 0 {
-		password = fmt.Sprintf("password=%s", db.options["password"])
-	}
-	optionString := fmt.Sprintf("user=%s %s dbname=%s sslmode=%s", db.options["user"], password, db.options["db"], db.options["sslmode"])
+	// Default to psql database on localhost on port 5432, typical connection string:
+	// user=server password=p host=localhost port=5432 dbname=db sslmode=disable
+	// See https://godoc.org/github.com/lib/pq for options, use params to override defaults if required
+	optionString := fmt.Sprintf("user=%s %s host=%s port=%s dbname=%s %s",
+		db.options["user"],
+		paramOrBlank("password", db.options["password"]),
+		db.options["host"],
+		db.options["port"],
+		db.options["db"],
+		db.options["params"])
+
 	var err error
 	db.sqlDB, err = sql.Open(db.options["adapter"], optionString)
 	if err != nil {
@@ -63,6 +71,13 @@ func (db *PostgresqlAdapter) Open(opts map[string]string) error {
 
 	return nil
 
+}
+
+func paramOrBlank(k, v string) string {
+	if len(v) > 0 {
+		return fmt.Sprintf("%s=%s", k, v)
+	}
+	return ""
 }
 
 // Close the database
