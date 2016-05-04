@@ -337,6 +337,7 @@ func (q *Query) Results() ([]Result, error) {
 }
 
 // ResultIDs returns an array of ids as the result of a query
+// FIXME - this should really use the query primary key, not "id" hardcoded
 func (q *Query) ResultIDs() []int64 {
 	var ids []int64
 	if Debug {
