@@ -14,7 +14,7 @@ import (
 
 // FIXME - this package global should in theory be protected by a mutex, even if it is only for debugging
 
-// query.Debug sets whether we output debug statements for SQL
+// Debug sets whether we output debug statements for SQL
 var Debug bool
 
 func init() {
