@@ -79,6 +79,24 @@ func Rows(sql string, args ...interface{}) (*sql.Rows, error) {
 	return results, err
 }
 
+// Copy returns a new copy of this query which can be mutated without affecting the original
+func (q *Query) Copy() *Query {
+	return &Query{
+		tablename:  q.tablename,
+		primarykey: q.primarykey,
+		sql:        q.sql,
+		sel:        q.sel,
+		join:       q.join,
+		where:      q.where,
+		group:      q.group,
+		having:     q.having,
+		order:      q.order,
+		offset:     q.offset,
+		limit:      q.limit,
+		args:       q.args,
+	}
+}
+
 // TODO: These should instead be something like query.New("table_name").Join(a,b).Insert() and just have one multiple function?
 
 // InsertJoin inserts a join clause on the query
@@ -300,6 +318,23 @@ func (q *Query) FirstResult() (Result, error) {
 
 	// Return the first result
 	return results[0], nil
+}
+
+// ResultInt64 returns the first result from a query stored in the column named col as an int64, the query is expected to have one result.
+func (q *Query) ResultInt64(c string) (int64, error) {
+	result, err := q.FirstResult()
+	if err != nil || result[c] == nil {
+		return 0, err
+	}
+	var i int64
+	switch result[c].(type) {
+	case int:
+		i = int64(result[c].(int))
+	case int64:
+		i = result[c].(int64)
+	}
+
+	return i, nil
 }
 
 // Results returns an array of results
