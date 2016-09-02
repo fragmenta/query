@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -320,7 +321,7 @@ func (q *Query) FirstResult() (Result, error) {
 	return results[0], nil
 }
 
-// ResultInt64 returns the first result from a query stored in the column named col as an int64, the query is expected to have one result.
+// ResultInt64 returns the first result from a query stored in the column named col as an int64.
 func (q *Query) ResultInt64(c string) (int64, error) {
 	result, err := q.FirstResult()
 	if err != nil || result[c] == nil {
@@ -328,13 +329,45 @@ func (q *Query) ResultInt64(c string) (int64, error) {
 	}
 	var i int64
 	switch result[c].(type) {
-	case int:
-		i = int64(result[c].(int))
 	case int64:
 		i = result[c].(int64)
+	case int:
+		i = int64(result[c].(int))
+	case float64:
+		i = int64(result[c].(float64))
+	case string:
+		f, err := strconv.ParseFloat(result[c].(string), 64)
+		if err != nil {
+			return i, err
+		}
+		i = int64(f)
 	}
 
 	return i, nil
+}
+
+// ResultFloat64 returns the first result from a query stored in the column named col as a float64.
+func (q *Query) ResultFloat64(c string) (float64, error) {
+	result, err := q.FirstResult()
+	if err != nil || result[c] == nil {
+		return 0, err
+	}
+	var f float64
+	switch result[c].(type) {
+	case float64:
+		f = result[c].(float64)
+	case int:
+		f = float64(result[c].(int))
+	case int64:
+		f = float64(result[c].(int))
+	case string:
+		f, err = strconv.ParseFloat(result[c].(string), 64)
+		if err != nil {
+			return f, err
+		}
+	}
+
+	return f, nil
 }
 
 // Results returns an array of results
