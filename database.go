@@ -17,11 +17,10 @@ func OpenDatabase(opts map[string]string) error {
 
 	// If we already have a db, return it
 	if database != nil {
-		return fmt.Errorf("Database already open - %s", database)
+		return fmt.Errorf("query: database already open - %s", database)
 	}
 
 	// Assign the db global in query package
-
 	switch opts["adapter"] {
 	case "sqlite3":
 		database = &adapters.SqliteAdapter{}
@@ -34,7 +33,7 @@ func OpenDatabase(opts map[string]string) error {
 	}
 
 	if database == nil {
-		return fmt.Errorf("Database adapter not recognised - %s", opts)
+		return fmt.Errorf("query: database adapter not recognised - %s", opts)
 	}
 
 	// Ask the db adapter to open
@@ -59,6 +58,9 @@ func SetMaxOpenConns(max int) {
 
 // QuerySQL executes the given sql Query against our database, with arbitrary args
 func QuerySQL(query string, args ...interface{}) (*sql.Rows, error) {
+	if database == nil {
+		return nil, fmt.Errorf("query: QuerySQL called with nil database")
+	}
 	results, err := database.Query(query, args...)
 	return results, err
 }
@@ -66,11 +68,18 @@ func QuerySQL(query string, args ...interface{}) (*sql.Rows, error) {
 // ExecSQL executes the given sql against our database with arbitrary args
 // NB returns sql.Result - not to be used when rows expected
 func ExecSQL(query string, args ...interface{}) (sql.Result, error) {
+	if database == nil {
+		return nil, fmt.Errorf("query: ExecSQL called with nil database")
+	}
 	results, err := database.Exec(query, args...)
 	return results, err
 }
 
 // TimeString returns a string formatted as a time for this db
+// if the database is nil, an empty string is returned.
 func TimeString(t time.Time) string {
-	return database.TimeString(t)
+	if database != nil {
+		return database.TimeString(t)
+	}
+	return ""
 }
