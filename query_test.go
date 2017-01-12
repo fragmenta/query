@@ -130,9 +130,9 @@ func TestPQSetup(t *testing.T) {
 
 	// First execute sql
 	cmd := exec.Command("psql", "-dquery_test", "-f./tests/query_test_pq.sql")
-	stdout, err := cmd.StdoutPipe()
-	stderr, err := cmd.StderrPipe()
-	err = cmd.Start()
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
+	err := cmd.Start()
 	if err != nil {
 		t.Fatalf("DB Test Error %v", err)
 	}
@@ -169,7 +169,7 @@ func TestPQFind(t *testing.T) {
 	}
 
 	// This should work
-	p, err = PagesFind(1)
+	_, err = PagesFind(1)
 	if err != nil {
 		t.Fatalf(Format, "Find(1)", "Model object", err)
 	}
@@ -239,7 +239,6 @@ func TestPQOrder(t *testing.T) {
 	}
 
 	// Look for pages in right order
-	models = make([]*Page, 0)
 	q = PagesQuery().Where("id < ?", 10).Where("id < ?", 100).Order("id asc")
 	models, err = PagesFindAll(q)
 	if err != nil || models == nil {
@@ -250,7 +249,6 @@ func TestPQOrder(t *testing.T) {
 	// Check id and created at time are correct
 	if p.ID != 1 || time.Since(p.CreatedAt) > time.Second {
 		t.Fatalf(Format, "Order test id asc", "1", fmt.Sprintf("%d", p.ID))
-
 	}
 
 }
@@ -301,7 +299,9 @@ func TestPQUpdate(t *testing.T) {
 	// Update each model with a different string
 	// This does also check if AllowedParams is working properly to clean params
 	err = p.Update(map[string]string{"title": "UPDATE 1"})
-
+	if err != nil {
+		t.Fatalf(Format, "Error after update", "updated", err)
+	}
 	// Check it is modified
 	p, err = PagesFind(3)
 
@@ -360,6 +360,9 @@ func TestPQDelete(t *testing.T) {
 	}
 
 	err = p.Delete()
+	if err != nil {
+		t.Fatalf(Format, "Error after delete", "deleted", err)
+	}
 
 	// Check it is gone and we get an error on next find
 	p, err = PagesFind(3)
@@ -441,8 +444,8 @@ func TestMysqlSetup(t *testing.T) {
 	s := string(bytes)
 
 	cmd := exec.Command("mysql", "-u", "root", "--init-command", s, "query_test")
-	stdout, err := cmd.StdoutPipe()
-	stderr, err := cmd.StderrPipe()
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
 	err = cmd.Start()
 	if err != nil {
 		t.Fatalf("MYSQL DB ERROR: %s", err)
@@ -553,7 +556,6 @@ func TestMysqlOrder(t *testing.T) {
 	}
 
 	// Look for pages in right order
-	models = make([]*Page, 0)
 	q = PagesQuery().Where("id < ?", 10).Where("id < ?", 100).Order("id asc")
 	models, err = PagesFindAll(q)
 	if err != nil || models == nil {
@@ -594,6 +596,9 @@ func TestMysqlUpdate(t *testing.T) {
 	// Update each model with a different string
 	// This does also check if AllowedParams is working properly to clean params
 	err = p.Update(map[string]string{"title": "UPDATE 1"})
+	if err != nil {
+		t.Fatalf(Format, "Error after update", "updated", err)
+	}
 
 	// Check it is modified
 	p, err = PagesFind(3)
@@ -669,6 +674,9 @@ func TestMysqlDelete(t *testing.T) {
 		t.Fatalf(Format, "Could not find model err", "id-3", err)
 	}
 	err = p.Delete()
+	if err != nil {
+		t.Fatalf(Format, "Error after delete", "deleted", err)
+	}
 
 	// Check it is gone and we get an error on next find
 	p, err = PagesFind(3)
@@ -715,8 +723,8 @@ func TestSQSetup(t *testing.T) {
 	// NB we use binary named sqlite3 - this is the default on OS X
 	// NB this requires sqlite3 version > 3.7.15 for init alternative would be to echo sql file at end
 	cmd := exec.Command("sqlite3", "--init", "tests/query_test_sqlite.sql", "tests/query_test.sqlite")
-	stdout, err := cmd.StdoutPipe()
-	stderr, err := cmd.StderrPipe()
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
 	err = cmd.Start()
 	if err != nil {
 		fmt.Println("Could not set up sqlite db - ERROR ", err)

@@ -1,3 +1,4 @@
+// Package adapters offers adapters for pouplar databases
 package adapters
 
 import (

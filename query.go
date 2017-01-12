@@ -1,4 +1,4 @@
-// Package Query lets you build and execute SQL chainable queries against a database of your choice, and defer execution of SQL until you wish to extract a count or array of models.
+// Package query lets you build and execute SQL chainable queries against a database of your choice, and defer execution of SQL until you wish to extract a count or array of models.
 
 // NB in order to allow cross-compilation, we exlude sqlite drivers by default
 // uncomment them to allow use of sqlite
@@ -172,7 +172,7 @@ func (q *Query) UpdateJoins(id int64, a []int64, b []int64) error {
 // Insert inserts a record in the database
 func (q *Query) Insert(params map[string]string) (int64, error) {
 
-	// Insert and retreive ID in one step from db
+	// Insert and retrieve ID in one step from db
 	sql := q.insertSQL(params)
 
 	if Debug {
@@ -273,7 +273,7 @@ func (q *Query) Count() (int64, error) {
 	// We expect just one row, with one column (count)
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&count)
+		err = rows.Scan(&count)
 		if err != nil {
 			return 0, err
 		}

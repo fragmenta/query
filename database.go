@@ -1,4 +1,3 @@
-// Package query lets you build and execute SQL chainable queries against a database of your choice, and defer execution of SQL until you wish to extract a count or array of models.
 package query
 
 import (
