@@ -1,5 +1,7 @@
-Query
+Query [![GoDoc](https://godoc.org/github.com/fragmenta/query?status.svg)](https://godoc.org/github.com/fragmenta/query) [![Go Report Card](https://goreportcard.com/badge/github.com/fragmenta/query)](https://goreportcard.com/report/github.com/fragmenta/query)
 =====
+
+
 
 Query lets you build SQL queries with chainable methods, and defer execution of SQL until you wish to extract a count or array of models. It will probably remain limited in scope - it is not intended to be a full ORM with strict mapping between db tables and structs, but a tool for querying the database with minimum friction, and performing CRUD operations linked to models; simplifying your use of SQL to store model data without getting in the way. Full or partial SQL queries are of course also available, and full control over sql. Model creation and column are delegated to the model, to avoid dictating any particular model structure or interface, however a suggested interface is given (see below and in tests), which makes usage painless in your handlers without any boilerplate.
 
