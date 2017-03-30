@@ -555,8 +555,12 @@ func (q *Query) OrWhere(sql string, args ...interface{}) *Query {
 	return q
 }
 
-// WhereIn defines a where clause in SQL which selects records IN() the given array
+// WhereIn adds a Where clause which selects records IN() the given array
 func (q *Query) WhereIn(col string, IDs []int64) *Query {
+	// Do nothing if no ids supplied
+	if len(IDs) == 0 {
+		return q
+	}
 
 	in := ""
 	for _, ID := range IDs {
