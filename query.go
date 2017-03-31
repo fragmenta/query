@@ -556,9 +556,13 @@ func (q *Query) OrWhere(sql string, args ...interface{}) *Query {
 }
 
 // WhereIn adds a Where clause which selects records IN() the given array
+// If IDs is an empty array, the query limit is set to 0
 func (q *Query) WhereIn(col string, IDs []int64) *Query {
-	// Do nothing if no ids supplied
+	// Return no results, so that when chaining callers
+	// don't have to check for empty arrays
 	if len(IDs) == 0 {
+		q.Limit(0)
+		q.reset()
 		return q
 	}
 
