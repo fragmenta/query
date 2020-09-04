@@ -114,11 +114,6 @@ func (q *Query) InsertJoins(a []int64, b []int64) error {
 		return fmt.Errorf("Null data for joins insert %s", q.table())
 	}
 
-	// Check for null entries in start of data - this is not a good idea.
-	//	if a[0] == 0 || b[0]  == 0 {
-	//		return fmt.Errorf("Zero data for joins insert %s", q.table())
-	//	}
-
 	values := ""
 	for _, av := range a {
 		for _, bv := range b {
@@ -216,19 +211,39 @@ func (q *Query) Delete() error {
 
 // UpdateAll updates all models specified in this relation
 func (q *Query) UpdateAll(params map[string]string) error {
-	// Create sql for update from ALL params
-	q.Select(fmt.Sprintf("UPDATE %s SET %s", q.table(), querySQL(params)))
+
+	// Build query SQL, allowing for null fields
+	var output []string
+	for _, key := range sortedParamKeys(params) {
+		v := params[key]
+		// Special case the value 'null'
+		if v == "null" {
+			// Set the value to null in the db, rather than a value
+			output = append(output, fmt.Sprintf("%s=null", database.QuoteField(key)))
+			// Remove from params as we have added to the update statement and don't require an argument
+			delete(params, key)
+		} else {
+			// Set the value using a placeholder
+			output = append(output, fmt.Sprintf("%s=?", database.QuoteField(key)))
+		}
+	}
+	querySQL := strings.Join(output, ",")
+
+	// Create sql for update from all params except null params using placeholders for args
+	q.Select(fmt.Sprintf("UPDATE %s SET %s", q.table(), querySQL))
 
 	// Execute, after PREpending params to args
-	// in an update statement, the where comes at the end
-	q.args = append(valuesFromParams(params), q.args...)
+	// In an update statement, the where comes at the end so update args come first
+	values := valuesFromParams(params)
+	q.args = append(values, q.args...)
 
+	// If debug mode, output a string representation
 	if Debug {
-		fmt.Printf("UPDATE SQL:%s\n%v\n", q.QueryString(), valuesFromParams(params))
+		fmt.Printf("UPDATE SQL:%s\n%v\n", q.QueryString(), values)
 	}
 
+	// Return the result of execution
 	_, err := q.Result()
-
 	return err
 }
 
@@ -744,15 +759,6 @@ func valuesFromParams(params map[string]string) []interface{} {
 		values = append(values, params[key])
 	}
 	return values
-}
-
-// Used for update statements, turn params into sql i.e. "col"=?
-func querySQL(params map[string]string) string {
-	var output []string
-	for _, k := range sortedParamKeys(params) {
-		output = append(output, fmt.Sprintf("%s=?", database.QuoteField(k)))
-	}
-	return strings.Join(output, ",")
 }
 
 func scanRow(cols []string, rows *sql.Rows) (Result, error) {
