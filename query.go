@@ -273,7 +273,7 @@ func (q *Query) Count() (int64, error) {
 
 	// Store the previous select and set
 	s := q.sel
-	countSelect := fmt.Sprintf("SELECT COUNT(%s.%s) FROM %s", q.table(), q.pk(), q.table())
+	countSelect := fmt.Sprintf("SELECT COUNT(distinct %s.%s) FROM %s", q.table(), q.pk(), q.table())
 	q.Select(countSelect)
 
 	// Store the previous order (minus order by) and set to empty
