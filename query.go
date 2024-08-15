@@ -631,6 +631,13 @@ func (q *Query) Join(otherModel string) *Query {
 	return q
 }
 
+// AddJoinString appends a fully specified join string to the list of joins
+func (q *Query) AddJoinString(joinSQL string) *Query {
+	q.join = fmt.Sprintf("%s %s", q.join, joinSQL)
+	q.reset()
+	return q
+}
+
 // Order defines ORDER BY sql
 func (q *Query) Order(sql string) *Query {
 	if sql == "" {
