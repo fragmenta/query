@@ -111,7 +111,7 @@ func (q *Query) InsertJoins(a []int64, b []int64) error {
 
 	// Make sure we have some data
 	if len(a) == 0 || len(b) == 0 {
-		return fmt.Errorf("Null data for joins insert %s", q.table())
+		return fmt.Errorf("query: null data for joins insert %s", q.table())
 	}
 
 	values := ""
@@ -134,7 +134,10 @@ func (q *Query) InsertJoins(a []int64, b []int64) error {
 	}
 
 	_, err := database.Exec(sql)
-	return err
+	if err != nil {
+		return fmt.Errorf("query: insert joins:%s", err)
+	}
+	return nil
 }
 
 // UpdateJoins updates the given joins, using the given id to clear joins first
@@ -147,7 +150,7 @@ func (q *Query) UpdateJoins(id int64, a []int64, b []int64) error {
 	// First delete any existing joins
 	err := q.Where(fmt.Sprintf("%s=?", q.pk()), id).Delete()
 	if err != nil {
-		return err
+		return fmt.Errorf("query: update join delete error:%s", err)
 	}
 
 	// Now join all a's with all b's by generating joins for each possible combination
@@ -270,7 +273,7 @@ func (q *Query) Count() (int64, error) {
 
 	// Store the previous select and set
 	s := q.sel
-	countSelect := fmt.Sprintf("SELECT COUNT(%s) FROM %s", q.pk(), q.table())
+	countSelect := fmt.Sprintf("SELECT COUNT(%s.%s) FROM %s", q.table(), q.pk(), q.table())
 	q.Select(countSelect)
 
 	// Store the previous order (minus order by) and set to empty
@@ -282,7 +285,7 @@ func (q *Query) Count() (int64, error) {
 	var count int64
 	rows, err := q.Rows()
 	if err != nil {
-		return 0, fmt.Errorf("Error querying database for count: %s\nQuery:%s", err, q.QueryString())
+		return 0, fmt.Errorf("query: error querying database for count: %s\nQuery:%s", err, q.QueryString())
 	}
 
 	// We expect just one row, with one column (count)
