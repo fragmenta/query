@@ -266,12 +266,10 @@ func (q *Query) DeleteAll() error {
 }
 
 // Count fetches a count of model objects (executes SQL).
+// Note this uses count(distinct pk) to avoid double counting when joins are used
 func (q *Query) Count() (int64, error) {
 
-	// In order to get consistent results, we use the same query builder
-	// but reset select to simple count select
-
-	// Store the previous select and set
+	// Store the previous select and set select to count distinct pk
 	s := q.sel
 	countSelect := fmt.Sprintf("SELECT COUNT(distinct %s.%s) FROM %s", q.table(), q.pk(), q.table())
 	q.Select(countSelect)
@@ -282,22 +280,39 @@ func (q *Query) Count() (int64, error) {
 	q.order = ""
 
 	// Fetch count from db for our sql with count select and no order set
-	var count int64
-	rows, err := q.Rows()
+	count, err := q.ScanInt()
 	if err != nil {
-		return 0, fmt.Errorf("query: error querying database for count: %s\nQuery:%s", err, q.QueryString())
+		return 0, err
 	}
 
-	// We expect just one row, with one column (count)
-	defer rows.Close()
-	for rows.Next() {
-		err = rows.Scan(&count)
-		if err != nil {
-			return 0, err
-		}
+	// Reset select and order after getting count
+	q.Select(s)
+	q.Order(o)
+	q.reset()
+
+	return count, err
+}
+
+// CountFast fetches a count of model objects using count(*) (executes SQL).
+func (q *Query) CountFast() (int64, error) {
+
+	// Set select to count(*)
+	s := q.sel
+	countSelect := fmt.Sprintf("SELECT COUNT(*) FROM %s", q.table())
+	q.Select(countSelect)
+
+	// Store the previous order (minus order by) and set to empty
+	// Order must be blank on count because of limited select
+	o := strings.Replace(q.order, "ORDER BY ", "", 1)
+	q.order = ""
+
+	// Fetch count from db for our sql with count select and no order set
+	count, err := q.ScanInt()
+	if err != nil {
+		return 0, err
 	}
 
-	// Reset select after getting count query
+	// Reset select and order after getting count
 	q.Select(s)
 	q.Order(o)
 	q.reset()
@@ -319,7 +334,28 @@ func (q *Query) Rows() (*sql.Rows, error) {
 	return results, err
 }
 
-// FirstResult executes the SQL and returrns the first result
+// ScanInt executes the query against the database, and returns the first column of the first row as an int64
+// the query must return a single row with one integer value
+func (q *Query) ScanInt() (int64, error) {
+	var result int64
+	rows, err := q.Rows()
+	if err != nil {
+		return 0, fmt.Errorf("query: error querying database for count: %s\nQuery:%s", err, q.QueryString())
+	}
+
+	// We expect just one row, with one column
+	// Anything else is an error
+	defer rows.Close()
+	rows.Next()
+	err = rows.Scan(&result)
+	if err != nil {
+		return 0, err
+	}
+
+	return result, nil
+}
+
+// FirstResult executes the SQL and returns the first result
 func (q *Query) FirstResult() (Result, error) {
 
 	// Set a limit on the query
