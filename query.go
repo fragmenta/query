@@ -744,11 +744,11 @@ func (q *Query) argString() string {
 // Convert arguments to string - used only for debug argument strings
 // Not to be exported or used to try to escape strings...
 func (q *Query) argToString(arg interface{}) string {
-	switch arg.(type) {
+	switch arg := arg.(type) {
 	case string:
-		return arg.(string)
+		return arg
 	case []byte:
-		return string(arg.([]byte))
+		return string(arg)
 	case int, int8, int16, int32, uint, uint8, uint16, uint32:
 		return fmt.Sprintf("%d", arg)
 	case int64, uint64:
@@ -756,7 +756,7 @@ func (q *Query) argToString(arg interface{}) string {
 	case float32, float64:
 		return fmt.Sprintf("%f", arg)
 	case bool:
-		return fmt.Sprintf("%d", arg)
+		return fmt.Sprintf("%v", arg)
 	default:
 		return fmt.Sprintf("%v", arg)
 
@@ -830,17 +830,17 @@ func scanRow(cols []string, rows *sql.Rows) (Result, error) {
 	for i := 0; i < len(cols); i++ {
 		v := *values[i].(*interface{})
 		if values[i] != nil {
-			switch v.(type) {
+			switch v := v.(type) {
 			default:
 				result[cols[i]] = v
 			case bool:
-				result[cols[i]] = v.(bool)
+				result[cols[i]] = v
 			case int:
-				result[cols[i]] = int64(v.(int))
+				result[cols[i]] = int64(v)
 			case []byte: // text cols are given as bytes
-				result[cols[i]] = string(v.([]byte))
+				result[cols[i]] = string(v)
 			case int64:
-				result[cols[i]] = v.(int64)
+				result[cols[i]] = v
 			}
 		}
 
